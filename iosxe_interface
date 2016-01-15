@@ -93,25 +93,27 @@ EXAMPLES = '''
     password: {{ password }}
     config: |
             description configured by ansible
+            vrf forwarding test1
+            ip address 10.1.1.1 255.255.255.0
 '''
 try:
     import socket
     import pyskate.utils
-    from pyskate.iosxe_netconf import IOSXEDevice, IfMissingError
-    from pyskate.iosxe_netconf import ConfigDeployError
+    from pyskate.iosxe_netconf import IOSXEDevice
+    from pyskate.iosxe_netconf import IfMissingError, ConfigDeployError
 except ImportError as e:
     print '*' * 30
     print e
     print '*' * 30
 
 class ConfigLineError(Exception):
+    '''Raise if there are invalid configuration lines.'''
     def __init__(self, invalid_lines):
         self.invalid_lines = invalid_lines
 
 def check_proposed_config(config):
     '''Raises an exception if an invalid configuration command is found in
-    *config*. Currently used to safeguard from exit to global configuration
-    mode.'''
+    *config*.'''
     invalid_lines = []
     for line in config:
         if 'shutdown' in line:
