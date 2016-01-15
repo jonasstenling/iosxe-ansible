@@ -23,6 +23,7 @@ description:
     - Manages BGP configuration in IOS-XE Netconf enabled devices
 author: Jonas Stenling <jonas@stenling.se>
 requirements:
+    - IOS XE with Netconf enabled
     - pyskate
 notes:
 options:
