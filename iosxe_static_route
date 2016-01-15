@@ -68,7 +68,7 @@ options:
     state:
         description:
             - Specify desired state of the resource
-        required: true
+        required: false
         default: present
         choices: ['present','absent']
         aliases: []
