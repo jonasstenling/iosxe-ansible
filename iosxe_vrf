@@ -40,13 +40,13 @@ options:
     state:
         description:
             - Specify desired state of the resource
-        required: true
+        required: false
         default: present
         choices: ['present','absent']
         aliases: []
     config:
         description:
-            - Specify desired configuration of the interface
+            - Specify desired configuration of the VRF definition 
         required: false
         default: null 
         choices: []
@@ -99,8 +99,8 @@ try:
     import socket
     import pyskate.utils
     import re
-    from pyskate.iosxe_netconf import IOSXEDevice, VRFMissingError
-    from pyskate.iosxe_netconf import ConfigDeployError
+    from pyskate.iosxe_netconf import IOSXEDevice
+    from pyskate.iosxe_netconf import VRFMissingError, ConfigDeployError
 except ImportError as e:
     print '*' * 30
     print e
@@ -204,7 +204,6 @@ def main():
         except ConfigDeployError:
             changed = False
             module.fail_json(msg="Failed to configure {0}".format(host))
-
 
     results = {}
     results['proposed'] = proposed_config
