@@ -1,0 +1,273 @@
+#!/usr/bin/env python
+
+# Copyright 2015 Jonas Stenling <jonas@stenling.se>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+DOCUMENTATION = '''
+---
+
+module: iosxe_interface
+short_description: Manages configuration of interface
+description:
+    - Manages attributes on interface of IOS-XE Netconf enabled devices
+author: Jonas Stenling 
+requirements:
+    - IOS XE with Netconf enabled
+    - pyskate
+notes:
+    - The module tries to be idempotent, but it is up to the user to verify
+      that the resulting configuration is correct.
+
+options:
+    interface:
+        description:
+            - Full name of interface, i.e. GigabitEthernet1/1,
+              GigabitEthernet1.1.100
+        required: true
+        default: null
+        choices: []
+        aliases: []
+    admin_state:
+        description:
+            - Administrative state of the interface (shutdown or not shutdown)
+        required: false
+        default: up
+        choices: ['up','down']
+        aliases: []
+    state:
+        description:
+            - Specify desired state of the resource
+        required: true
+        default: present
+        choices: ['present','absent']
+        aliases: []
+    config:
+        description:
+            - Specify desired configuration of the interface
+        required: false
+        default: null 
+        choices: []
+        aliases: []
+    host:
+        description:
+            - IP Address or hostname (resolvable by Ansible control host)
+              of the target NX-API enabled switch
+        required: true
+        default: null
+        choices: []
+        aliases: []
+    username:
+        description:
+            - Username used to login to the router
+        required: true
+        default: null
+        choices: []
+        aliases: []
+    password:
+        description:
+            - Password used to login to the router
+        required: true
+        default: null
+        choices: []
+        aliases: []
+'''
+
+EXAMPLES = '''
+
+# Configure interface description
+- iosxe_interface:
+    interface: GigabitEthernet2
+    host: {{ inventory_hostname }}
+    username: {{ username }}
+    password: {{ password }}
+    config: |
+            description configured by ansible
+'''
+try:
+    import socket
+    import pyskate.utils
+    from pyskate.iosxe_netconf import IOSXEDevice, IfMissingError
+    from pyskate.iosxe_netconf import ConfigDeployError
+except ImportError as e:
+    print '*' * 30
+    print e
+    print '*' * 30
+
+class ConfigLineError(Exception):
+    def __init__(self, invalid_lines):
+        self.invalid_lines = invalid_lines
+
+def check_proposed_config(config):
+    '''Raises an exception if an invalid configuration command is found in
+    *config*. Currently used to safeguard from exit to global configuration
+    mode.'''
+    invalid_lines = []
+    for line in config:
+        if 'shutdown' in line:
+            invalid_lines.append(line)
+    if invalid_lines:
+        raise ConfigLineError(invalid_lines)
+
+def change_admin_state(current_admin_state, admin_state):
+    '''Returns new expected admin state if a change is needed, otherwise
+    returns False'''
+    if current_admin_state == 'down':
+        if admin_state == 'up':
+            return 'up'
+        elif admin_state == 'down':
+            return False
+    elif current_admin_state == 'up':
+        if admin_state == 'up':
+            return False
+        elif admin_state == 'down':
+            return 'down'
+
+def change_state(current_state, state):
+    '''Returns new expected state if a change is needed, otherwise
+    returns False'''
+    if current_state == 'absent':
+        if state == 'present':
+            return 'present'
+        elif state == 'absent':
+            return False
+    elif current_state == 'present':
+        if state == 'present':
+            return False
+        elif state == 'absent':
+            return 'absent'
+
+def main():
+
+    module = AnsibleModule(
+        argument_spec=dict(
+            state=dict(choices=['present', 'absent'], default='present'),
+            admin_state=dict(choices=['up', 'down'], default='up'),
+            interface=dict(required=True, type='str'),
+            config=dict(required=True, type='str'),
+            host=dict(required=True),
+            username=dict(type='str'),
+            password=dict(type='str'),
+        ),
+        supports_check_mode=True
+    )
+
+    username = module.params['username']
+    password = module.params['password']
+    host = socket.gethostbyname(module.params['host'])
+    interface = module.params['interface']
+    state = module.params['state']
+    admin_state = module.params['admin_state']
+    proposed_config = module.params['config'].split('\n')
+
+
+    device = IOSXEDevice(host, username, password)
+
+    try:
+        check_proposed_config(proposed_config)
+    except ConfigLineError as e:
+        module.fail_json(msg="Invalid config line: {0}".format('; '.join(e.invalid_lines)))
+
+    try:
+        device.connect()
+    except:
+        module.fail_json(msg="Failed to connect to {0}".format(host))
+
+    changed = False
+
+    try:
+        running_config = [x.strip() for x in device.get_interface_config(interface)]
+        current_state = 'present'
+        current_admin_state = 'up'
+        for line in running_config:
+            if line.strip().startswith('shutdown'):
+                current_admin_state = 'down'
+    except IfMissingError:
+        current_state = 'absent'
+        current_admin_state = 'down'
+        running_config = []
+
+    # check if state and/or admin state is supposed to change 
+    new_state = change_state(current_state, state)
+    new_admin_state = change_admin_state(current_admin_state, admin_state)
+    if new_state:
+        if 'absent' in new_state:
+            final_config = ['no interface {0}'.format(interface)]
+            changed = True
+        elif 'present' in new_state:
+            if new_admin_state:
+                final_config = pyskate.utils.compare_proposed_to_running(proposed_config, running_config)
+                if final_config:
+                    if 'down' in new_admin_state:
+                        final_config.insert(0, "shutdown")
+                    elif 'up' in new_admin_state:
+                        final_config.insert(0, "no shutdown")
+                    final_config.insert(0, "interface {0}".format(interface))
+                changed = True
+            # when current_state is absent, current_admin_state is set to down
+            # which means that the call to change_admin_state() with
+            # admin_state set to down will return False. that case is handled below.
+            else:
+                final_config = pyskate.utils.compare_proposed_to_running(proposed_config, running_config)
+                if final_config:
+                    if 'down' in admin_state:
+                        final_config.insert(0, "shutdown")
+                    elif 'up' in admin_state:
+                        final_config.insert(0, "no shutdown")
+                    final_config.insert(0, "interface {0}".format(interface))
+                changed = True
+
+    elif state == 'absent' and current_state == 'absent':
+        changed = False
+        final_config = None
+    elif state == 'present':    
+        if new_admin_state:
+            final_config = pyskate.utils.compare_proposed_to_running(proposed_config, running_config)
+            if 'down' in new_admin_state:
+                final_config.insert(0, "shutdown")
+            elif 'up' in new_admin_state:
+                final_config.insert(0, "no shutdown")
+            final_config.insert(0, "interface {0}".format(interface))
+            changed = True
+        else:
+            final_config = pyskate.utils.compare_proposed_to_running(proposed_config, running_config)
+            if final_config:
+                if 'down' in admin_state:
+                    final_config.insert(0, "shutdown")
+                elif 'up' in admin_state:
+                    final_config.insert(0, "no shutdown")
+                final_config.insert(0, "interface {0}".format(interface))
+                changed = True
+
+    if final_config:
+        if module.check_mode:
+            module.exit_json(changed=True, commands='\n'.join(final_config))
+        try:
+            device.edit_config('\n'.join(final_config))
+            changed = True
+        except ConfigDeployError:        
+            changed = False
+            module.fail_json(msg="Failed to configure {0}".format(host))
+
+
+    results = {}
+    results['proposed'] = proposed_config
+    results['final'] = final_config
+    results['changed'] = changed
+
+    device.disconnect()
+
+    module.exit_json(**results)
+
+from ansible.module_utils.basic import *
+main()

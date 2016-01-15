@@ -1,0 +1,178 @@
+#!/usr/bin/env python
+
+# Copyright 2015 Jonas Stenling <jonas@stenling.se>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+DOCUMENTATION = '''
+---
+
+module: iosxe_bgp
+short_description: Manages BGP configuration
+description:
+    - Manages BGP configuration in IOS-XE Netconf enabled devices
+author: Jonas Stenling <jonas@stenling.se>
+requirements:
+    - pyskate
+notes:
+options:
+    host:
+        description:
+            - IP Address or hostname (resolvable by Ansible control host)
+              of the target Netconf enabled device
+        required: true
+        default: null
+        choices: []
+        aliases: []
+    username:
+        description:
+            - Username used to login to the device
+        required: false
+        default: null
+        choices: []
+        aliases: []
+    password:
+        description:
+            - Password used to login to the device
+        required: false
+        default: null
+        choices: []
+        aliases: []
+    as_number:
+        description:
+            - The AS number used by the device
+        required: false
+        default: null
+        choices: []
+        aliases: []
+'''
+
+EXAMPLES = '''
+
+# Ensure that connected and static is redistributed for vrf test1
+- iosxe_bgp:
+    as_number: 31337
+    host: {{ inventory_hostname }}
+    username: {{ username }}
+    password: {{ password }}
+    ipv4_vrf: test1
+    ipv4_config: |
+                 redistribute connected
+                 redistribute static
+
+'''
+
+try:
+    import socket
+    import re
+    from pyskate.iosxe_netconf import IOSXEDevice, BGPMissingError
+    from pyskate.iosxe_netconf import ConfigDeployError
+    from pyskate.utils import compare_proposed_to_running
+except ImportError as e:
+    print '*' * 30
+    print e
+    print '*' * 30
+
+def get_final_ipv4_config(proposed_ipv4_config, running_config, ipv4_vrf):
+    '''Compare *proposed_ipv4_config* to *running_config* and return diff
+    that shall be committed to router.'''
+
+    # strip leading whitespace
+    running_config = [i.strip() for i in running_config]
+
+    vrf_config = []
+    in_vrf = False
+
+    # parse and get address-family configuration block for *vrf*
+    for line in running_config:
+        if not in_vrf:
+            if re.search("address-family ipv4 vrf {0}".format(ipv4_vrf),line):
+                in_vrf = True
+        else:
+            if re.search("exit-address-family", line):
+                break
+            else:
+                vrf_config.append(line)
+
+    final_config = compare_proposed_to_running(proposed_ipv4_config, vrf_config)
+
+    return final_config
+
+def main():
+
+    module = AnsibleModule(
+        argument_spec=dict(
+            as_number=dict(required=True, type='int'),
+            ipv4_vrf=dict(required=True, type='str'),
+            ipv4_config=dict(required=True, type='str'),
+            host=dict(required=True),
+            username=dict(required=True, type='str'),
+            password=dict(required=True, type='str'),
+        ),
+    )
+
+    username = module.params['username']
+    password = module.params['password']
+    host = socket.gethostbyname(module.params['host'])
+    as_number = module.params['as_number']
+    ipv4_vrf = module.params['ipv4_vrf']
+    proposed_ipv4_config = module.params['ipv4_config'].split('\n')
+
+
+    device = IOSXEDevice(host, username, password)
+
+    changed = False
+
+    try:
+        device.connect()
+    except:
+        module.fail_json(msg="Failed to connect to {0}".format(host))
+
+    try:
+        running_config = device.get_bgp_config()
+    except BGPMissingError:
+        module.fail_json(msg="BGP is not enabled in device {0}".format(host))
+
+    if running_config[0] != "router bgp {0}".format(as_number):
+        module.fail_json(msg="AS number {0} is not configured in router".format(
+            as_number))
+
+    final_config = get_final_ipv4_config(proposed_ipv4_config, running_config, ipv4_vrf)
+
+    if len(final_config) == 0:
+        changed = False
+    else:
+
+        final_config.insert(0, "router bgp {0}".format(as_number))
+        final_config.insert(1, "address-family ipv4 vrf {0}".format(ipv4_vrf))
+
+        if module.check_mode:
+            module.exit_json(changed=True, commands='\n'.join(final_config))
+        try:    
+            device.edit_config('\n'.join(final_config))
+            changed = True
+        except ConfigDeployError:
+            changed = False
+            module.fail_json(msg="Failed to configure {}".format(host))
+
+    results = {}
+    results['proposed'] = proposed_ipv4_config
+    results['final'] = final_config
+    results['changed'] = changed
+
+    device.disconnect()
+
+    module.exit_json(**results)
+
+from ansible.module_utils.basic import *
+main()
