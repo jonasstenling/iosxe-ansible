@@ -55,10 +55,23 @@ options:
         default: null
         choices: []
         aliases: []
+    ipv4_vrf:
+        description:
+            - Name of VRF to configure
+        required: false
+        default: null
+        choices: []
+        aliases: []
+    ipv4_config:
+        description:
+            - VRF specific BGP configuration to deploy to router
+        required: false
+        default: null
+        choices: []
+        aliases: []
 '''
 
 EXAMPLES = '''
-
 # Ensure that connected and static is redistributed for vrf test1
 - iosxe_bgp:
     as_number: 31337
@@ -66,17 +79,16 @@ EXAMPLES = '''
     username: {{ username }}
     password: {{ password }}
     ipv4_vrf: test1
-    ipv4_config: |
+    ipv4_config: |-
                  redistribute connected
                  redistribute static
-
 '''
 
 try:
     import socket
     import re
-    from pyskate.iosxe_netconf import IOSXEDevice, BGPMissingError
-    from pyskate.iosxe_netconf import ConfigDeployError
+    from pyskate.iosxe_netconf import IOSXEDevice
+    from pyskate.iosxe_netconf import ConfigDeployError, BGPMissingError
     from pyskate.utils import compare_proposed_to_running
 except ImportError as e:
     print '*' * 30
@@ -93,7 +105,7 @@ def get_final_ipv4_config(proposed_ipv4_config, running_config, ipv4_vrf):
     vrf_config = []
     in_vrf = False
 
-    # parse and get address-family configuration block for *vrf*
+    # parse and get address-family configuration block for *ipv4_vrf*
     for line in running_config:
         if not in_vrf:
             if re.search("address-family ipv4 vrf {0}".format(ipv4_vrf),line):
@@ -127,7 +139,6 @@ def main():
     as_number = module.params['as_number']
     ipv4_vrf = module.params['ipv4_vrf']
     proposed_ipv4_config = module.params['ipv4_config'].split('\n')
-
 
     device = IOSXEDevice(host, username, password)
 
