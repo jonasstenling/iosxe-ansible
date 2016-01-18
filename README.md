@@ -46,10 +46,8 @@ end
 ```
 **Test netconf connectivity to your router from your control node**
 ```
-ssh router.my.domain.com -s netconf
+ssh -l admin router.my.domain.com -s netconf
 Password:
-[e600917@ix-automata01-px iosxe-ansible]$ ssh -l admin ix-test-pe01 -s netconf
-Password: 
 <?xml version="1.0" encoding="UTF-8"?><hello xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"><capabilities><capability>urn:ietf:params:netconf:base:1.0</capability><capability>urn:ietf:params:netconf:capability:writeable-running:1.0</capability><capability>urn:ietf:params:netconf:capability:startup:1.0</capability><capability>urn:ietf:params:netconf:capability:url:1.0</capability><capability>urn:cisco:params:netconf:capability:pi-data-model:1.0</capability><capability>urn:cisco:params:netconf:capability:notification:1.0</capability></capabilities><session-id>3975491096</session-id></hello>]]>]]>
 ```
 If you see the hello prompt from your router you should be able to connect to it via Netconf.
