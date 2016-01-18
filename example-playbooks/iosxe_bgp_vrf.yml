@@ -1,0 +1,21 @@
+---
+#
+# Please note that IOS XE doesn't give back any good error message when the
+# configuration fails. The easiest way to see what's going on when you have a
+# failure is to do "debug netconf all" in your router and you will get the
+# error message for the offending configuration line in plain text.
+#
+- name: add redistribute static and connected to bgp config
+  hosts: myrouter
+  connection: local    
+  tasks: 
+    - name: redistribute connected and static routes in vrf
+      iosxe_bgp_vrf:
+        ipv4_vrf: "{{ vrf_name }}"
+        ipv4_config: |-
+                redistribute connected
+                redistribute static
+        host: "{{ inventory_hostname }}"
+        as_number: "{{ as_number }}"
+        username: "{{ username }}"
+        password: "{{ password }}"

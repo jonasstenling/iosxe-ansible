@@ -1,0 +1,11 @@
+---
+- name: get facts from router
+  hosts: myrouter
+  connection: local    
+
+  tasks:
+    - name: get facts from router
+      iosxe_get_facts:
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"

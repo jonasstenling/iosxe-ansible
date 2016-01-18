@@ -1,0 +1,16 @@
+---
+- name: add static route to router
+  hosts: myrouter
+  connection: local
+  tasks:
+    - name: add static route
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "{{ name }}"
+        state: "{{ state }}"
+        vrf: "{{ vrf }}"    
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"

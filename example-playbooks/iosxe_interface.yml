@@ -1,0 +1,24 @@
+---
+#
+# Please note that IOS XE doesn't give back any good error message when the
+# configuration fails. The easiest way to see what's going on when you have a
+# failure is to do "debug netconf all" in your router and you will get the
+# error message for the offending configuration line in plain text.
+#
+- name: add interface to router
+  hosts: myrouter
+  connection: local
+  tasks:
+    - name: add interface to router
+      iosxe_interface:
+        config: |-
+                description Configured by Ansible
+                encapsulation dot1Q {{ vlan_id }} 
+                vrf forwarding {{ vrf_name }}
+                ip address {{ ip_address }} {{ netmask }}
+        state: "{{ state }}"
+        admin_state: "{{ admin_state }}"
+        interface: "{{ interface }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"

@@ -1,0 +1,22 @@
+---
+- name: add vrf definition to router
+  hosts: myrouter
+  connection: local
+  tasks:
+    - name: add vrf definition 
+      iosxe_vrf:
+        config: |
+                rd 1:3
+                route-target export 1:3
+                route-target import 1:3
+                !
+                address-family ipv4
+                exit-address-family
+                !
+                address-family ipv6
+                exit-address-family
+        state: "{{ state }}"
+        vrf: "{{ vrf_name }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
