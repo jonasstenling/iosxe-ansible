@@ -32,6 +32,7 @@ This guide assumes that you have:
 sudo pip install pyskate
 ```
 **Install iosxe-ansible files**
+
 Clone this repo and copy all iosxe_ files to your ansible module search path.
 ```
 git clone https://github.com/jonasstenling/iosxe-ansible.git
@@ -54,6 +55,9 @@ Password:
 If you see the hello prompt from your router you should be able to connect to it via Netconf.
 
 # User guide
-
 * There is documentation in the source code of the modules on how to use them.
 * Please review the example-playbooks directory for some example use cases. 
+
+#Contributing and feedback
+If you want to contribute to iosxe-ansible, report bugs or have other
+feedback, raise an issue on [GitHub](https://github.com/jonasstenling/iosxe-ansible/issues)!
