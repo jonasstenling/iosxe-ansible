@@ -1,0 +1,11 @@
+---
+- name: save running configuration to startup configuration
+  hosts: ix-test-pe01
+  connection: local    
+
+  tasks:
+    - name: save configuration in router
+      iosxe_save_config:
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
