@@ -1,0 +1,12 @@
+---
+- name: execute show command in router
+  hosts: ix-test-pe01
+  connection: local    
+
+  tasks:
+    - name: execute show command in router
+      iosxe_exec_command:
+        username: "{{ username }}"
+        password: "{{ password }}"
+        command: "{{ command }}"
+        host: "{{ inventory_hostname }}"

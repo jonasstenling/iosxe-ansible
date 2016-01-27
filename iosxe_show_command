@@ -1,0 +1,119 @@
+#!/usr/bin/env python
+
+# Copyright 2015 Jonas Stenling <jonas@stenling.se>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+DOCUMENTATION = '''
+---
+
+module: iosxe_show_command
+short_description: Execute show command in router
+description:
+    - Will return command response for the supplied show command 
+author: Jonas Stenling 
+requirements:
+    - IOS XE with Netconf enabled
+    - pyskate
+
+options:
+    host:
+        description:
+            - IP Address or hostname (resolvable by Ansible control host)
+              of the target Netconf IOS-XE enabled router.
+        required: true
+        default: null
+        choices: []
+        aliases: []
+    username:
+        description:
+            - Username used to login to the router.
+        required: true
+        default: null
+        choices: []
+        aliases: []
+    password:
+        description:
+            - Password used to login to the router.
+        required: true
+        default: null
+        choices: []
+        aliases: []
+    command:
+        description:
+            - show command to execute in router.
+        required: true
+        default: null
+        choices: []
+        aliases: []
+'''
+
+EXAMPLES = '''
+
+# Execute show command in router
+- iosxe_show_command:
+    host: {{ inventory_hostname }}
+    username: {{ username }}
+    password: {{ password }}
+    command: "show interfaces"
+'''
+try:
+    import socket
+    from pyskate.iosxe_netconf import IOSXEDevice
+except ImportError as e:
+    print '*' * 30
+    print e
+    print '*' * 30
+
+def main():
+
+    module = AnsibleModule(
+        argument_spec=dict(
+            host=dict(required=True),
+            username=dict(type='str'),
+            password=dict(type='str'),
+            command=dict(type='str'),
+        ),
+        supports_check_mode=False
+    )
+
+    username = module.params['username']
+    password = module.params['password']
+    command = module.params['command']
+    host = socket.gethostbyname(module.params['host'])
+
+    device = IOSXEDevice(host, username, password)
+
+    if not command.startswith('show'):
+        module.fail_json(
+            msg="All commands executed by this module must start with 'show'")
+    try:
+        device.connect()
+    except:
+        module.fail_json(msg="Failed to connect to {0}".format(host))
+
+    try:
+        cmd_output = device.exec_command(command)
+    except:    
+        module.fail_json(msg="Failed to execute command {0}".format(command))
+
+    device.disconnect()
+
+    results = {}
+    results['command'] = command
+    results['cmd_output'] = cmd_output
+
+    module.exit_json(**results)
+
+from ansible.module_utils.basic import *
+main()
