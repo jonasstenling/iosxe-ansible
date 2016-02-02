@@ -1,6 +1,6 @@
 ---
 - name: execute show command in router
-  hosts: ix-test-pe01
+  hosts: myrouter
   connection: local    
 
   tasks:

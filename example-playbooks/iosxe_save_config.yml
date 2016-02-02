@@ -1,6 +1,6 @@
 ---
 - name: save running configuration to startup configuration
-  hosts: ix-test-pe01
+  hosts: myrouter
   connection: local    
 
   tasks:
