@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2015 Jonas Stenling <jonas@stenling.se>
+# Copyright 2016 Jonas Stenling <jonas@stenling.se>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,6 +64,14 @@ options:
         required: false
         default: null
         choices: []
+        aliases: []
+    ignore_name:
+        name:
+            - Do not perform matching of route name when adding or
+              removing a route.
+        required: false
+        default: null
+        choices: ['true', 'false']
         aliases: []
     state:
         description:
@@ -132,6 +140,32 @@ def change_state(current_state, state):
         elif state == 'absent':
             return 'absent'
 
+def compare_proposed_to_running_wo_name(proposed_config, running_config, vrf):
+    '''Compare running_config to proposed_config and ignore name field.
+    Used when ignore_name == True'''
+
+    if vrf is not None:
+        proposed_config_wo_name = ' '.join(proposed_config[0].split()[0:7])
+
+        commands = [proposed_config_wo_name]
+
+        for line in running_config:
+            running_config_wo_name = ' '.join(line.split()[0:7])
+            if running_config_wo_name in commands:
+                commands.remove(running_config_wo_name)
+        return commands
+    else:
+        proposed_config_wo_name = ' '.join(proposed_config[0].split()[0:5])
+
+        commands = [proposed_config_wo_name]
+
+        for line in running_config:
+            running_config_wo_name = ' '.join(line.split()[0:5])
+            if running_config_wo_name in commands:
+                commands.remove(running_config_wo_name)
+        return commands
+
+
 def main():
 
     module = AnsibleModule(
@@ -141,6 +175,7 @@ def main():
             ipv4_nexthop=dict(required=True, type='str'),
             vrf=dict(required=False, type='str', default=None),
             name=dict(required=False, type='str', default=None),
+            ignore_name=dict(required=False, type='bool'),
             state=dict(choices=['present', 'absent'], default='present'),
             host=dict(required=True),
             username=dict(type='str'),
@@ -156,6 +191,7 @@ def main():
     ipv4_network = module.params['ipv4_network']
     ipv4_netmask = module.params['ipv4_netmask']
     ipv4_nexthop = module.params['ipv4_nexthop']
+    ignore_name = module.params['ignore_name']
     vrf = module.params['vrf']
     name = module.params['name']
 
@@ -185,41 +221,61 @@ def main():
 #
 # and the apply_map function will check if the args is not None and in that case
 # add the config to cmd.
-    if len(name.split()) > 1: # name contains spaces, need to wrap in quotes
-        if vrf is not None:
-            proposed_config = ['ip route vrf {0} {1} {2} {3} name "{4}"'.format(
-                    vrf,
-                    ipv4_network,
-                    ipv4_netmask,
-                    ipv4_nexthop,
-                    name)]
+
+
+
+    if name is not None:
+        if len(name.split()) > 1: # name contains spaces, need to wrap in quotes
+            if vrf is not None:
+                proposed_config = ['ip route vrf {0} {1} {2} {3} name "{4}"'.format(
+                        vrf,
+                        ipv4_network,
+                        ipv4_netmask,
+                        ipv4_nexthop,
+                        name)]
+            else:
+                proposed_config = ['ip route {0} {1} {2} name "{3}"'.format(
+                        ipv4_network,
+                        ipv4_netmask,
+                        ipv4_nexthop,
+                        name)]
         else:
-            proposed_config = ['ip route {0} {1} {2} name "{3}"'.format(
-                    ipv4_network,
-                    ipv4_netmask,
-                    ipv4_nexthop,
-                    name)]
-    else:
+            if vrf is not None:
+                proposed_config = ['ip route vrf {0} {1} {2} {3} name {4}'.format(
+                        vrf,
+                        ipv4_network,
+                        ipv4_netmask,
+                        ipv4_nexthop,
+                        name)]
+            else:    
+                proposed_config = ['ip route {0} {1} {2} name {3}'.format(
+                        ipv4_network,
+                        ipv4_netmask,
+                        ipv4_nexthop,
+                        name)]
+    else:    
         if vrf is not None:
-            proposed_config = ['ip route vrf {0} {1} {2} {3} name {4}'.format(
+            proposed_config = ['ip route vrf {0} {1} {2} {3}'.format(
                     vrf,
                     ipv4_network,
                     ipv4_netmask,
-                    ipv4_nexthop,
-                    name)]
+                    ipv4_nexthop)]
         else:    
-            proposed_config = ['ip route {0} {1} {2} name {3}'.format(
+            proposed_config = ['ip route {0} {1} {2}'.format(
                     ipv4_network,
                     ipv4_netmask,
-                    ipv4_nexthop,
-                    name)]
+                    ipv4_nexthop)]
 
     running_config = [x.strip() for x in device.get_config()]
     running_config = [x for x in running_config if x.startswith('ip route')]
 
 
-    final_config = pyskate.utils.compare_proposed_to_running(proposed_config, running_config)
-    
+    if ignore_name:
+        final_config = compare_proposed_to_running_wo_name(proposed_config,
+                running_config, vrf)
+    else:    
+        final_config = pyskate.utils.compare_proposed_to_running(proposed_config, running_config)
+
     if len(final_config) == 0: # route already exists in router
         current_state = 'present'
     else:
@@ -230,7 +286,13 @@ def main():
 
     if new_state:
         if 'absent' in new_state:
-            final_config = ['no ' + proposed_config[0]]
+            if ignore_name:
+                if vrf is not None: 
+                    final_config = ['no ' + ' '.join(proposed_config[0].split()[0:7])]
+                else:
+                    final_config = ['no ' + ' '.join(proposed_config[0].split()[0:5])]
+            else:
+               final_config = ['no ' + proposed_config[0]]
             changed = True
         elif 'present' in new_state:
             changed = True
@@ -243,6 +305,9 @@ def main():
         except ConfigDeployError:
             changed = False
             module.fail_json(msg="Failed to configure {0}".format(host))
+    else:
+        # if state is not changed, set correct final_config
+        final_config = []
 
     results = {}
     results['proposed'] = proposed_config
