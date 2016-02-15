@@ -1,0 +1,412 @@
+---
+- name: add static route to router
+  hosts: ix-test-pe01
+  connection: local
+  tasks:
+      #
+      # Task block for route in vrf with short name (no spaces)
+      #
+    - name: setup starting state for testing
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        state: absent
+        ignore_name: true    
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+
+    - name: add static route in vrf with name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo"
+        state: present
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: add static route in vrf with name (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo"
+        state: present
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
+
+    - name: remove static route in vrf with name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo"
+        state: absent
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: remove static route in vrf with name (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo"
+        state: absent
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
+
+      #
+      # Task block for route with short name (no spaces)
+      # Route is added to global table, not vrf
+      #
+    - name: setup starting state for testing
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        state: absent
+        ignore_name: true    
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+
+    - name: add static route with name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo"
+        state: present
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: add static route with name (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo"
+        state: present
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
+
+    - name: remove static route in vrf with name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo"
+        state: absent
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: remove static route in vrf with name (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo"
+        state: absent
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
+      #
+      # Task block for route in vrf with long name (spaces)
+      #
+    - name: setup starting state for testing
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        state: absent
+        ignore_name: true    
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+
+    - name: add static route in vrf with long name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bar baz"
+        state: present
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: add static route in vrf with long name (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bar baz"
+        state: present
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
+
+    - name: remove static route in vrf with long name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bar baz"
+        state: absent
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: remove static route in vrf with long name (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bar baz"
+        state: absent
+        vrf: "test1"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
+
+      #
+      # Task block for route with long name (spaces)
+      # Route is added to global table, not vrf
+      #
+    - name: setup starting state for testing
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        state: absent
+        ignore_name: true    
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+
+    - name: add static route with long name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bar baz"
+        state: present
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: add static route with long name (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bar baz"
+        state: present
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
+
+    - name: remove static route in vrf with long name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bar baz"
+        state: absent
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: remove static route in vrf with long name (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bor baz"
+        state: absent
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
+      #
+      # Task block for route with long name (spaces)
+      # Route is added to global table, not vrf
+      #
+      # Set ignore_nore == true
+      #
+      # Will remove route regardless of name given
+      #
+    - name: setup starting state for testing
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        state: absent
+        ignore_name: true    
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+
+    - name: add static route with long name
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        name: "foo bar baz"
+        state: present
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+
+    - name: remove static route with ignore_name == true
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        ignore_name: true    
+        state: absent
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert changed
+      assert:
+        that:
+          - result.changed == true
+            
+    - name: remove static route with ignore_name == true (idempotency check)
+      iosxe_static_route:
+        ipv4_network: "10.1.0.0"  
+        ipv4_netmask: "255.255.255.0"  
+        ipv4_nexthop: "192.168.1.1"
+        ignore_name: true    
+        state: absent
+        username: "{{ username }}"
+        password: "{{ password }}"
+        host: "{{ inventory_hostname }}"
+      register: result       
+      
+    - name: assert idempotency
+      assert:
+        that:
+          - result.changed == false
