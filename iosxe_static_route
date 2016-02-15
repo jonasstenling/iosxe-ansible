@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2015 Jonas Stenling <jonas@stenling.se>
+# Copyright 2016 Jonas Stenling <jonas@stenling.se>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -140,18 +140,31 @@ def change_state(current_state, state):
         elif state == 'absent':
             return 'absent'
 
-def compare_proposed_to_running_wo_name(proposed_config, running_config):
+def compare_proposed_to_running_wo_name(proposed_config, running_config, vrf):
     '''Compare running_config to proposed_config and ignore name field.
     Used when ignore_name == True'''
-    proposed_config_wo_name = ' '.join(proposed_config[0].split()[0:7])
 
-    commands = [proposed_config_wo_name]
+    if vrf is not None:
+        proposed_config_wo_name = ' '.join(proposed_config[0].split()[0:7])
 
-    for line in running_config:
-        running_config_wo_name = ' '.join(line.split()[0:7])
-        if running_config_wo_name in commands:
-            commands.remove(running_config_wo_name)
-    return commands
+        commands = [proposed_config_wo_name]
+
+        for line in running_config:
+            running_config_wo_name = ' '.join(line.split()[0:7])
+            if running_config_wo_name in commands:
+                commands.remove(running_config_wo_name)
+        return commands
+    else:
+        proposed_config_wo_name = ' '.join(proposed_config[0].split()[0:5])
+
+        commands = [proposed_config_wo_name]
+
+        for line in running_config:
+            running_config_wo_name = ' '.join(line.split()[0:5])
+            if running_config_wo_name in commands:
+                commands.remove(running_config_wo_name)
+        return commands
+
 
 def main():
 
@@ -259,7 +272,7 @@ def main():
 
     if ignore_name:
         final_config = compare_proposed_to_running_wo_name(proposed_config,
-                running_config)
+                running_config, vrf)
     else:    
         final_config = pyskate.utils.compare_proposed_to_running(proposed_config, running_config)
 
@@ -292,6 +305,9 @@ def main():
         except ConfigDeployError:
             changed = False
             module.fail_json(msg="Failed to configure {0}".format(host))
+    else:
+        # if state is not changed, set correct final_config
+        final_config = []
 
     results = {}
     results['proposed'] = proposed_config
