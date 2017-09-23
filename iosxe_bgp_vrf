@@ -109,7 +109,7 @@ def get_final_ipv4_config(proposed_ipv4_config, running_config, ipv4_vrf):
     # parse and get address-family configuration block for *ipv4_vrf*
     for line in running_config:
         if not in_vrf:
-            if re.search("address-family ipv4 vrf {0}".format(ipv4_vrf),line):
+            if re.search("address-family ipv4 vrf {0}$".format(ipv4_vrf),line):
                 in_vrf = True
         else:
             if re.search("exit-address-family", line):
